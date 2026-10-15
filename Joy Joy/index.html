@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Happy Monthsary</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: system-ui, -apple-system, sans-serif;
+            touch-action: none;
+        }
+
+        #canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .title-overlay {
+            position: absolute;
+            top: 15%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #ffffff;
+            z-index: 10;
+            pointer-events: none;
+            user-select: none;
+        }
+
+        .title-overlay h1 {
+            font-size: 1.8rem;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.8);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="title-overlay">
+        <h1>Tap Anywhere For A Surprise</h1>
+    </div>
+
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById("canvas");
+        const ctx = canvas.getContext("2d");
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        resizeCanvas();
+        window.addEventListener("resize", resizeCanvas);
+
+        const items = [];
+
+        class Bouquet {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.startY = window.innerHeight;
+                this.currentY = window.innerHeight;
+                this.stemHeight = window.innerHeight - y;
+                this.growthProgress = 0;
+                this.bloomProgress = 0;
+                this.textAlpha = 0;
+            }
+
+            update() {
+                // 1. Grow the stem upwards from the bottom
+                if (this.growthProgress < 1) {
+                    this.growthProgress += 0.04;
+                    this.currentY = this.startY - (this.stemHeight * this.growthProgress);
+                } else if (this.bloomProgress < 1) {
+                    // 2. Open up the flowers once the stem reaches the tap point
+                    this.bloomProgress += 0.05;
+                } else if (this.textAlpha < 1) {
+                    // 3. Fade in the text message
+                    this.textAlpha += 0.03;
+                }
+            }
+
+            draw() {
+                // Draw Stem
+                ctx.beginPath();
+                ctx.moveTo(this.x, this.startY);
+                ctx.quadraticCurveTo(this.x + 10, (this.startY + this.currentY) / 2, this.x, this.currentY);
+                ctx.strokeStyle = "#4caf50";
+                ctx.lineWidth = 3;
+                ctx.stroke();
+
+                // Draw Bouquet Flowers if stem reached top
+                if (this.growthProgress >= 0.95) {
+                    const maxRadius = 15;
+                    const currentRadius = maxRadius * Math.min(this.bloomProgress, 1);
+                    const offsets = [
+                        {x: 0, y: 0, color: '#ff4081'},      // Center
+                        {x: -16, y: -8, color: '#e040fb'},   // Left
+                        {x: 16, y: -8, color: '#7c4dff'},    // Right
+                        {x: -8, y: -20, color: '#ff80ab'},   // Top Left
+                        {x: 8, y: -20, color: '#ea80fc'}     // Top Right
+                    ];
+
+                    offsets.forEach(f => {
+                        const fx = this.x + f.x;
+                        const fy = this.y + f.y;
+
+                        // Petals
+                        const petals = 5;
+                        for (let i = 0; i < petals; i++) {
+                            const angle = (i * Math.PI * 2) / petals;
+                            const px = fx + Math.cos(angle) * (currentRadius * 0.6);
+                            const py = fy + Math.sin(angle) * (currentRadius * 0.6);
+
+                            ctx.beginPath();
+                            ctx.arc(px, py, currentRadius * 0.5, 0, Math.PI * 2);
+                            ctx.fillStyle = f.color;
+                            ctx.fill();
+                        }
+
+                        // Flower Center
+                        ctx.beginPath();
+                        ctx.arc(fx, fy, currentRadius * 0.3, 0, Math.PI * 2);
+                        ctx.fillStyle = "#ffeb3b";
+                        ctx.fill();
+                    });
+                }
+
+                // Draw "Happy Monthsary" Text above the bouquet
+                if (this.textAlpha > 0) {
+                    ctx.save();
+                    ctx.globalAlpha = this.textAlpha;
+                    ctx.font = "bold 20px system-ui, sans-serif";
+                    ctx.fillStyle = "#ff80ab";
+                    ctx.textAlign = "center";
+                    ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+                    ctx.shadowBlur = 10;
+                    ctx.fillText("Happy Monthsary ❤️", this.x, this.y - 50);
+                    ctx.restore();
+                }
+            }
+        }
+
+        // Add bouquet on touch or click
+        function handleTap(e) {
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const x = clientX - rect.left;
+            const y = clientY - rect.top;
+
+            items.push(new Bouquet(x, y));
+        }
+
+        window.addEventListener("pointerdown", handleTap);
+
+        // Animation Loop
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            items.forEach(item => {
+                item.update();
+                item.draw();
+            });
+
+            requestAnimationFrame(animate);
+        }
+
+        animate();
+    </script>
+</body>
+</html>
